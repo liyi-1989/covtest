@@ -50,7 +50,7 @@ Mp=function(p){
 # M: strange matrix used in covariance of sample covariance matrix
 TCM=function(para){
   a=para$a; r=para$r; sf=para$sf; se=para$se; p=para$p; n=para$n; i0=para$i0; j0=para$j0; d=para$d; M=para$M
-  if(para$mathod=="unequalvar"){
+  if(para$method=="unequalvar"){
     A0=mdiag.r(p,c(1,a)); Sigma0=sf^2*A0%*%t(A0)+se^2*diag(rep(1,p))
     A1=A0;
     A1[i0,j0]=A1[j0,i0]=r; Sigma1=sf^2*A1%*%t(A1)+se^2*diag(rep(1,p))
@@ -64,7 +64,20 @@ TCM=function(para){
     A1[j0+1,i0]=a*r; A1[j0+1,j0]=a*sqrt(1-r^2)
     A1[j0-1,i0]=a*r; A1[j0-1,j0]=a*sqrt(1-r^2)
   }else if(d==2){
+    p=sqrt(para$p)
+    A0=mdiag(p^2,c(1,a))
+    for(i in 1:(p^2)){
+      if(i+p<=p^2) A0[i,i+p]=a
+      if(i-p>=0) A0[i,i-p]=a
+    }
+    Sigma0=A0%*%t(A0)+sigma^2*diag(rep(1,p^2))
     
+    A1=A0
+    A1[j0,i0]=r; A1[j0,j0]=sqrt(1-r^2); 
+    A1[j0+1,i0]=a*r; A1[j0+1,j0]=a*sqrt(1-r^2)
+    A1[j0-1,i0]=a*r; A1[j0-1,j0]=a*sqrt(1-r^2)
+    A1[j0+p,i0]=a*r; A1[j0+p,j0]=a*sqrt(1-r^2)
+    A1[j0-p,i0]=a*r; A1[j0-p,j0]=a*sqrt(1-r^2)
   }
   Sigma1=sf^2*A1%*%t(A1)+se^2*diag(rep(1,p))
   #C1=t(base::chol(Sigma1))
@@ -75,7 +88,7 @@ TCM=function(para){
 # S: sample covariance used to create covariance of sample covariance (of which Dmat is a 5 by 5 submatrix)
 # Amat: coeeficients for (center, up, right, down, left) for unbiasedness (=1)
 # para$i0, j0: position of the teleconnection (to calculate lambda star)
-LS5=function(S,Amat,para){
+LS5=function(S,para,Amat=NULL){
   n=para$n; i0=para$i0; j0=para$j0; d=para$d; M=para$M
   C1=t(base::chol(S))
   Dmat=matrix(NA,5,5)
@@ -88,14 +101,17 @@ LS5=function(S,Amat,para){
     }
   }
   dvec=rep(0,5)
-  Amat=matrix(c(1,a,a,a,a),5,1)
+  if(is.null(Amat)){
+    a=para$a
+    Amat=matrix(c(1,a,a,a,a),5,1)
+  }
   bvec=1
   fit.qp=quadprog::solve.QP(Dmat,dvec,Amat,bvec,meq=1)
   # # solve quad-programming by hand
   # NUM=(2*solve(Dmat)%*%Amat)
   # DEN=(t(Amat)%*%solve(Dmat)%*%Amat)
   # ls5=NUM/DEN[1,1]
-  return(list(ls5=fit.qp$solution,obj=fit.qp$value))
+  return(list(ls5=fit.qp$solution,obj=fit.qp$value,Dmat=Dmat,Amat=Amat))
 }
 
 # Modify the sample covariance with lambda star filtering

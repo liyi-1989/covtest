@@ -7,186 +7,46 @@ library(fields)
 library(mvtnorm)
 library(matrixcalc)
 
+####### 0. True Covariance Model ######
+####### 0.1 one-dimensional model #######
+# parameters
+para1=list(p=100,n=1000,a=0.9,r=0.8,sf=1,se=2,i0=12,j0=92,d=1,method="equalvar")
+para1$M=Mp(para1$p)
+covmodel=TCM(para1) # generating true covariance model
+S0=covmodel$S0
+S1=covmodel$S0
+ls5fit=LS5(S1,para1)
+ls1=ls5fit$ls5 # find optimal lambda star
+Dmat=ls5fit$Dmat
+Amat=ls5fit$Amat
+####### 0.2 two-dimensional model #######
+para2=para1; para2$d=2; para2$i0=23; para2$j0=73
+covmodel2=TCM(para2)
+S0=covmodel2$S0
+S1=covmodel2$S1
+ls5fit=LS5(S1,para1)
+ls2=ls5fit$ls5 # find optimal lambda star
+Dmat=ls5fit$Dmat
+Amat=ls5fit$Amat
 
+####### 0.3 small simulation #######
+# # double check optimal variance, i.e. objective (if variance reduced significantly)
+# Variance=t(ls1)%*%Dmat%*%ls1
+# ls0=c(1,0,0,0,0)
+# Variance0=t(ls0)%*%Dmat%*%ls0
+# Variance/Variance0
+# # # check constraints
+# # t(ls1)%*%Amat
+# # t(ls0)%*%Amat
 
-####### -1. True Covariance Model ######
-####### -1.1 Basic Model ######
-p=100; a=0.9; b=0.9; sigma=3; i0=5; j0=95
-M1=Mp(p)
-# true NULL model
-A0=mdiag(p,c(1,a))
-Sigma0=A0%*%t(A0)+sigma^2*diag(rep(1,p))
-# true alternative model
-A1=A0
-A1[i0,j0]=A1[j0,i0]=b #A1[(j0-1):(j0+1),j0]=0; A1[(j0-1):(j0+1),i0]=c(a,1,a)
-Sigma1=A1%*%t(A1)+sigma^2*diag(rep(1,p))
-
-C=t(base::chol(Sigma1))
-####### -1.2 Ding's (small) Model ######
-# small p size, just to check if Ding's derivation is the same as quadratic programming
-p=30; a=0.9; b=0.8; sigma=3; i0=12; j0=22
-M1=Mp(p)
-A0=mdiag(p,c(1,a)); Sigma0=A0%*%t(A0)+sigma^2*diag(rep(1,p))
-A1=A0; A1[j0,i0]=sqrt(b); A1[j0,j0]=sqrt(1-b); A1[j0+1,i0]=a*sqrt(b); A1[j0+1,j0]=a*sqrt(1-b)
-Sigma1=A1%*%t(A1)+sigma^2*diag(rep(1,p))
-C1=t(base::chol(Sigma1))
-# best lambda based on Ding's derivation
-lambda_star_ding=(sigma^2+1)/((a^2-1)^2+(a^2+sigma^2)*(a^2+1))
-c(lambda_star_ding,(1-lambda_star_ding)/a)
-# best lambda base on true covcov quad-programming
-d11=ijthcovcov(C=C1,M=M1,df=n,i1=i0,j1=j0,i2=i0,j2=j0)
-d12=d21=ijthcovcov(C=C1,M=M1,df=n,i1=i0,j1=j0,i2=i0,j2=j0+1) 
-d22=ijthcovcov(C=C1,M=M1,df=n,i1=i0,j1=j0+1,i2=i0,j2=j0+1) 
-
-Dmat=matrix(c(d11,d21,d12,d22),2,2)
-dvec=rep(0,2)
-Amat=matrix(c(1,a),2,1)
-bvec=1
-fit.qp=solve.QP(Dmat,dvec,Amat,bvec,meq=1)
-mu=fit.qp$solution
-mu
-
-# --- Conclusion: Ding and quad-prog have the same result (C is on true sigma1)
-# best lambda base on sample covcov quad-programming
-X=mvrnorm(n, mu = rep(0,p), Sigma = Sigma1)
-C2=t(base::chol(cov(X)))
-d11=ijthcovcov(C=C2,M=M1,df=n,i1=i0,j1=j0,i2=i0,j2=j0)
-d12=d21=ijthcovcov(C=C2,M=M1,df=n,i1=i0,j1=j0,i2=i0,j2=j0+1) 
-d22=ijthcovcov(C=C2,M=M1,df=n,i1=i0,j1=j0+1,i2=i0,j2=j0+1) 
-Dmat=matrix(c(d11,d21,d12,d22),2,2)
-fit2.qp=solve.QP(Dmat,dvec,Amat,bvec,meq=1)
-mu2=fit2.qp$solution
-mu2
-# --- Conclusion: sampled version covcov will not differ too much for best lambda
-printM(A0)
-printM(Sigma0)
-printM(A1)
-printM(Sigma1)
-
-
-####### -1.3 Ding's (large) Model ######
-# small p size, just to check if Ding's derivation is the same as quadratic programming
-p=100; a=0.9; b=0.8; sigma=1; i0=12; j0=92
-M1=Mp(p)
-A0=mdiag(p,c(1,a)); Sigma0=A0%*%t(A0)+sigma^2*diag(rep(1,p))
-A1=A0; 
-A1[j0,i0]=sqrt(b); A1[j0,j0]=sqrt(1-b); 
-A1[j0+1,i0]=a*sqrt(b); A1[j0+1,j0]=a*sqrt(1-b)
-A1[j0-1,i0]=a*sqrt(b); A1[j0-1,j0]=a*sqrt(1-b)
-Sigma1=A1%*%t(A1)+sigma^2*diag(rep(1,p))
-C1=t(base::chol(Sigma1))
-# best lambda based on Ding's derivation
-# lambda_star_ding=(sigma^2+1)/((a^2-1)^2+(a^2+sigma^2)*(a^2+1))
-# c(lambda_star_ding,(1-lambda_star_ding)/a)
-# best lambda base on true covcov quad-programming
-Dmat=matrix(NA,5,5)
-dfi0j0=data.frame(i0=c(i0,i0-1,i0,i0+1,i0),j0=c(j0,j0,j0+1,j0,j0-1))
-for(i in 1:5){
-  for(j in 1:5){
-    i1=dfi0j0[i,"i0"]; j1=dfi0j0[i,"j0"]
-    i2=dfi0j0[j,"i0"]; j2=dfi0j0[j,"j0"]
-    Dmat[i,j]=ijthcovcov(C=C1,M=M1,df=n,i1=i1,j1=j1,i2=i2,j2=j2)
-  }
-}
-dvec=rep(0,5)
-Amat=matrix(c(1,a,a,a,a),5,1)
-bvec=1
-fit.qp=solve.QP(Dmat,dvec,Amat,bvec,meq=1)
-mu=fit.qp$solution
-mu
-
-
-printM(A0)
-printM(Sigma0)
-printM(A1)
-printM(Sigma1)
-####### -1.4 2Dim Ding's (large) Model ######
-# small p size, just to check if Ding's derivation is the same as quadratic programming
-p=10; a=0.9; b=0.8; sigma=2; i0=23; j0=73
-#M1=Mp(p^2)
-A0=mdiag(p^2,c(1,a))
-for(i in 1:(p^2)){
-  if(i+p<=p^2) A0[i,i+p]=a
-  if(i-p>=0) A0[i,i-p]=a
-}
-Sigma0=A0%*%t(A0)+sigma^2*diag(rep(1,p^2))
-
-A1=A0
-A1[j0,i0]=sqrt(b); A1[j0,j0]=sqrt(1-b); 
-A1[j0+1,i0]=a*sqrt(b); A1[j0+1,j0]=a*sqrt(1-b)
-A1[j0-1,i0]=a*sqrt(b); A1[j0-1,j0]=a*sqrt(1-b)
-Sigma1=A1%*%t(A1)+sigma^2*diag(rep(1,p^2))
-C1=t(base::chol(Sigma1))
-Dmat=matrix(NA,5,5)
-dfi0j0=data.frame(i0=c(i0,i0-1,i0,i0+1,i0),j0=c(j0,j0,j0+1,j0,j0-1))
-for(i in 1:5){
-  for(j in 1:5){
-    i1=dfi0j0[i,"i0"]; j1=dfi0j0[i,"j0"]
-    i2=dfi0j0[j,"i0"]; j2=dfi0j0[j,"j0"]
-    Dmat[i,j]=ijthcovcov(C=C1,M=M1,df=n,i1=i1,j1=j1,i2=i2,j2=j2)
-  }
-}
-dvec=rep(0,5)
-Amat=matrix(c(1,a,a,a,a),5,1)
-bvec=1
-fit.qp=solve.QP(Dmat,dvec,Amat,bvec,meq=1)
-mu=fit.qp$solution
-mu
-
-####### 0. Estimate Covariance of surrounding cov by simulation ######
-
-n=1000
-
-# # covcov by simulation
-# N=1000
-# i0j0=array(NA,c(3,3,N))
-# for(k in 1:N){
-#   # H0
-#   data = mvrnorm(n, mu = rep(0,p), Sigma = Sigma1)
-#   S=cov(data)
-#   i0j0[,,k]=S[(i0-1):(i0+1),(j0-1):(j0+1)]
-# }
-# XX=cbind(i0j0[2,2,],i0j0[1,2,],i0j0[2,3,],i0j0[3,2,],i0j0[2,1,])
-
-# covcov by formula (gaussian)
-Dmat=matrix(NA,5,5)
-dfi0j0=data.frame(i0=c(i0,i0-1,i0,i0+1,i0),j0=c(j0,j0,j0+1,j0,j0-1))
-for(i in 1:5){
-  for(j in 1:5){
-    i1=dfi0j0[i,"i0"]; j1=dfi0j0[i,"j0"]
-    i2=dfi0j0[j,"i0"]; j2=dfi0j0[j,"j0"]
-    Dmat[i,j]=ijthcovcov(C=C,M=M1,df=n,i1=i1,j1=j1,i2=i2,j2=j2)
-  }
-}
-
-#Dmat=cov(XX)
-dvec=rep(0,5)
-Amat=matrix(c(2,a,a,a,a),5,1)
-bvec=2
-fit.qp=solve.QP(Dmat,dvec,Amat,bvec,meq=1)
-mu=fit.qp$solution
-mu
-# check optimal variance (if variance reduced significantly)
-Variance=t(mu)%*%Dmat%*%mu
-mu0=c(1,0,0,0,0)
-Variance0=t(mu0)%*%Dmat%*%mu0
-
-Variance
-Variance0
-# check constraints
-t(mu)%*%Amat
-t(mu0)%*%Amat
-
-# mean((XX%*%mu-2*b)^2)
-# mean((XX%*%mu0-2*b)^2)
-# 
-# sd(XX%*%mu)
-# sd(XX%*%mu0)
-
-# solve quad-programming by hand
-NUM=(2*solve(Dmat)%*%Amat)
-DEN=(t(Amat)%*%solve(Dmat)%*%Amat)
-NUM/DEN[1,1]
+####### 0.4 simulation: lambda star #######
+# The lambda star for (1) 5 by 5 case; (2) in the exact factor model with a; have manually derive solution
+# Even though we can do that by LS5 function for all, due to the C1=chol() step, 
+# we cannot find C1 explicitly in terms of the parameters (any nearest neighour cov of cov, too time consuming, and complex when not exact factor model).
+# So we need:
+# (1). Double check our manually derive lambda star for the 5 by 5 case
+# (2). study the behaviour of the lambda star i.e. the variance-reduction combination of the surroundings. 
+# Main work: derive Dmat manually as a function of a,r,sf,se (true parameters)
 
 ####### 1. Estimation problem ######
 n=1000
