@@ -1,6 +1,7 @@
 source('utils.R')
-#library(Matrix)
 library(quadprog)
+library(Matrix)
+
 ############## 1. Wishart Distribution ##############
 # used to compute covariance of sample covariance matrix
 ithrowkron=function(C,i0,j0){
@@ -116,8 +117,9 @@ LS5=function(S,para,Amat=NULL){
 }
 
 # Find optimal lambda (5 by 5) by hand
-LS5m=function(para){
-  a=para$a; r=para$r; sf=para$sf; se=para$se; d=para$d
+LS5m=function(a,ef_ratio,d){
+  r=sf=1; se=ef_ratio
+  # This calculation need r, but the result has nothing to do with r
   if(d==1){
     d1=(4*a^4+4*a^2+r^2+1)*sf^4+(4*a^2+2)*se^2*sf^2+se^4
     d2=(4*a^4+4*a^2+a^2*r^2+1)*sf^4+(4*a^2+2)*se^2*sf^2+se^4
@@ -132,7 +134,7 @@ LS5m=function(para){
     s2=(4*a^4+a^2+a^2*r^2)*sf^4+a^2*se^2*sf^2
   }
   dmat=matrix(NA,5,5)
-  dmat[1,1]=d1 #k0 
+  dmat[1,1]=d1 #k0
   dmat[2,2]=dmat[3,3]=dmat[4,4]=dmat[5,5]=d2
   dmat[1,2]=dmat[1,3]=dmat[1,4]=dmat[1,5]=r1 # row 1
   dmat[2,3]=dmat[3,4]=dmat[4,5]=dmat[2,5]=s1 #k1,3
@@ -142,10 +144,31 @@ LS5m=function(para){
       dmat[i,j]=dmat[j,i]
     }
   }
-  
+
   lambda2=(a*d1-r1)/(d2+2*s1+s2-8*a*r1+4*a^2*d1)
   ls5=c(1-4*a*lambda2,lambda2,lambda2,lambda2,lambda2)
-  return(list(ls5=ls5,obj=t(ls5)%*%Dmat%*%ls5/2,Dmat=dmat))
+  return(list(ls5=ls5,obj=t(ls5)%*%dmat%*%ls5/2,Dmat=dmat))
+}
+
+a_efratio_hat=function(S,d=1,sf=NULL){
+  if(d==1){
+    if(is.null(sf)){
+      k0=mean(diag(S[c(-1,-p),c(-1,-p)]))
+      k1=mean(diag(S[-p,-1]))
+      k2=mean(diag(S[-c(p-1,p),-c(1,2)]))
+      a_hat=2*k2/k1
+      ef_ratio=sqrt(k2*(4*k0-8*k2)/(k1^2)-1)
+    }else{ # sf is known, which is not very possible
+      k0=mean(diag(S[c(-1,-p),c(-1,-p)]))
+      k1=mean(diag(S[-p,-1]))
+      a_hat=k1/(2*para$sf^2)
+      se=sqrt(k0-k1^2/(2*sf^2)-sf^2)
+      ef_ratio=se/sf
+    }
+  }else if(d==2){
+    
+  }
+  return(c(a_hat,ef_ratio))
 }
 
 # Modify the sample covariance with lambda star filtering
@@ -153,27 +176,8 @@ LS5m=function(para){
 # S: sample covariance matrix
 # mu: lambda star
 # bandwidth: filtering S starting away from "bandwidth"th diagonal
-sigmabar=function(X,S=NULL,a=NULL,mu,bandwidth=2,para=NULL,sfknown=F){
-  n=dim(X)[1]
-  p=dim(X)[2]
-  if(is.null(S)){
-    S=cov(X)
-  }
-  S1=S
-  if(is.null(a)){
-    if(sfknown){
-      k1=mean(diag(S[-p,-1]))
-      ahat=k1/(2*para$sf^2)
-    }else{
-      k1=mean(diag(S[-p,-1]))
-      k2=mean(diag(S[-c(p-1,p),-c(1,2)]))
-      ahat=2*k2/k1
-      # ahat2=sqrt(mean(diag(S[-c(p-1,p),-c(1,2)])))
-      # ahat22=mean(sqrt(diag(S[-c(p-1,p),-c(1,2)])),na.rm=T)
-    }
-  }else{
-    ahat=a
-  }
+sigmabar=function(S,mu,bandwidth=2){
+  p=dim(S)[1]; S1=S
   
   for(i in bandwidth:(p-4)){
     for(j in i:(p-2)){
@@ -184,7 +188,7 @@ sigmabar=function(X,S=NULL,a=NULL,mu,bandwidth=2,para=NULL,sfknown=F){
     }
   }
   
-  return(list(S=S1,a=ahat))
+  return(S1)
 }
 
 

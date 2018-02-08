@@ -1,17 +1,18 @@
 # long short covariance model 
 # bar: average surroundings
-library(Rcpp)
+#library(Rcpp)
 source('utils_lscm.R')
-Rcpp::sourceCpp('src/utils.cpp')
-library(fields)
+#Rcpp::sourceCpp('src/utils.cpp')
+#library(fields)
 library(mvtnorm)
-library(matrixcalc)
-library(tikzDevice)
+#library(matrixcalc)
+#library(tikzDevice)
 ####### 0. True Covariance Model ######
-# parameters
-para1=list(p=100,n=1000,a=0.9,r=0.8,sf=1,se=2,i0=12,j0=92,d=1,method="equalvar") # one-dimensional model
-para1$M=Mp(para1$p)
-para2=para1; para2$d=2; para2$i0=23; para2$j0=73 # two-dimensional model 
+# parameters (N: number of replication)
+para1=list(p=100,n=1000,a=0.9,r=0.8,sf=1,se=2,i0=NULL,j0=NULL,M=NULL,d=1,method="equalvar",N=100) # one-dimensional model
+para1$i0=round(para1$p*0.23); para1$j0=round(para1$p*0.77)
+#para1$M=Mp(para1$p)
+#para2=para1; para2$d=2 # two-dimensional model 
 
 covmodel=TCM(para1) # generating true covariance model
 S0=covmodel$S0; S1=covmodel$S1
@@ -39,14 +40,114 @@ ls1=ls5fit$ls5 # find optimal lambda star #Dmat=ls5fit$Dmat; Amat=ls5fit$Amat
 
 # ls5mfit=LS5m(para1) # lambda star by hand in 1-dim model
 # ls1m=ls5mfit$ls5
-# ls1
-# ls1m
-# 
+# c(ls1,ls1m)
 # ls5mfit=LS5m(para2) # lambda star by hand in 2-dim model
 # ls2m=ls5mfit$ls5
-# ls2
-# ls2m
+# c(ls2,ls2m)
 
+####### 1. Estimation and Test Simulation ######
+# 1. estimate a
+# 2. estimate r
+# 3. estimate covariance matrix
+n=para1$n; p=para1$p; i0=para1$i0; j0=para1$j0; N=para1$N 
+
+R0=as.data.frame(matrix(NA,N,14))
+colnames(R0)=c("a_hat","efratio_hat","sij_hat","sij_bar","s_hat_F","s_bar_F","s_hat_2","s_bar_2","max_hat","max_bar","max_hat_i","max_hat_j","max_bar_i","max_bar_j")
+R1=R0
+
+t0=proc.time()
+set.seed(1)
+for(k in 1:N){
+  #============== H0 ==============
+  data = mvrnorm(n, mu = rep(0,p), Sigma = S0)
+  Shat=cov(data)
+  
+  hatfit=a_efratio_hat(S=Shat,d=para1$d) # estimate a, se/sf
+  a_hat=hatfit[1]
+  efratio_hat=hatfit[2]
+  lstar=LS5m(a=a_hat,ef_ratio=efratio_hat,d=para1$d)$ls5 # estimate lambda star
+  #lstar=ls1
+  Sbar=sigmabar(S=Shat,mu=lstar) # sigmabar
+  
+  sij_hat=Shat[i0,j0]
+  sij_bar=Sbar[i0,j0]
+  s_hat_F=base::norm(Shat-S0,"F")
+  s_bar_F=base::norm(Sbar-S0,"F")
+  s_hat_2=base::norm(Shat-S0,"2")
+  s_bar_2=base::norm(Sbar-S0,"2")
+  max_hat=max(abs(Shat)*(S0==0))
+  max_bar=maxd.r(abs(Sbar[2:(p-1),2:(p-1)]),4)#max(abs(Sbar)*(S0==0))
+  mm_hat=abs(Shat[2:(p-1),2:(p-1)])
+  mm_hat_ji=which(mm_hat == maxd.r(mm_hat,4), arr.ind = TRUE)
+  mm_bar=abs(Sbar[2:(p-1),2:(p-1)])
+  mm_bar_ji=which(mm_bar == maxd.r(mm_bar,4), arr.ind = TRUE)
+  
+  R0[k,]=c(a_hat,efratio_hat,sij_hat,sij_bar,s_hat_F,s_bar_F,s_hat_2,s_bar_2,max_hat,max_bar,mm_hat_ji[1,],mm_bar_ji[1,])
+  #============== H1 ==============
+  data = mvrnorm(n, mu = rep(0,p), Sigma = S1)
+  Shat=cov(data)
+  
+  hatfit=a_efratio_hat(S=Shat,d=para1$d) # estimate a, se/sf
+  a_hat=hatfit[1]
+  efratio_hat=hatfit[2]
+  lstar=LS5m(a=a_hat,ef_ratio=efratio_hat,d=para1$d)$ls5 # estimate lambda star
+  #lstar=ls1
+  Sbar=sigmabar(S=Shat,mu=lstar) # sigmabar
+  
+  sij_hat=Shat[i0,j0]
+  sij_bar=Sbar[i0,j0]
+  s_hat_F=base::norm(Shat-S0,"F")
+  s_bar_F=base::norm(Sbar-S0,"F")
+  s_hat_2=base::norm(Shat-S0,"2")
+  s_bar_2=base::norm(Sbar-S0,"2")
+  max_hat=max(abs(Shat)*(S0==0))
+  max_bar=maxd.r(abs(Sbar[2:(p-1),2:(p-1)]),4)#max(abs(Sbar)*(S0==0))
+  mm_hat=abs(Shat[2:(p-1),2:(p-1)])
+  mm_hat_ji=which(mm_hat == maxd.r(mm_hat,4), arr.ind = TRUE)
+  mm_bar=abs(Sbar[2:(p-1),2:(p-1)])
+  mm_bar_ji=which(mm_bar == maxd.r(mm_bar,4), arr.ind = TRUE)
+  
+  R1[k,]=c(a_hat,efratio_hat,sij_hat,sij_bar,s_hat_F,s_bar_F,s_hat_2,s_bar_2,max_hat,max_bar,mm_hat_ji[1,],mm_bar_ji[1,])
+}
+t1=proc.time()-t0
+t1
+
+#a_true=para$a
+sij_0=S0[i0,j0]
+sij_1=S1[i0,j0]
+####### 2. Collect and Analyze results ######
+# apply(R0,2,mean)
+# apply(R1,2,mean)
+# apply(R0,2,sd)
+# apply(R1,2,sd)
+lmax10=R0[,"max_hat"]
+lmax20=R0[,"max_bar"]
+lmax11=R1[,"max_hat"]
+lmax21=R1[,"max_bar"]
+
+alpha=0.05
+mean(lmax11>quantile(lmax10,1-alpha))
+mean(lmax21>quantile(lmax20,1-alpha))
+############ cut-off ############
+TS10=n*lmax10^2-4*log(p)+log(log(p)) # test statistics of lmax(coherence)
+CUT.simu10=quantile(TS10,1-alpha) # CUT.asym10=-log(8*pi)-2*log(log(1/(1-alpha)))#y_alpha
+TS20=n*lmax20^2-4*log(p)+log(log(p)) # test statistics of lmax(coherence)
+CUT.simu20=quantile(TS20,1-alpha) # type I error: mean(TS10>CUT.simu10) # by quantile definition, it is always 0.05
+############ type II error: power ############
+TS11=n*lmax11^2-4*log(p)+log(log(p)) # coherence of S
+EP11=mean(TS11>CUT.simu10) # Empirical power
+EP11
+TS21=n*lmax21^2-4*log(p)+log(log(p)) # coherence of Sbar
+EP21=mean(TS21>CUT.simu20) # Empirical power
+EP21
+
+# filepath="./mis/"
+# filename="simu"
+# save(R0,R1,sij_0,sij_1,EP11,EP21,para1,file=paste0(filepath,filename,".RData"))
+
+
+###### 3. Plots ######
+###### 3.1 Plots for Covariance Model ######
 ####### make plot for 1-dim model #######
 n1=31
 ai=li=li2=li3=rep(0,n1)
@@ -56,7 +157,7 @@ for(i in 1:n1){
   p1t$se=1; li[i]=LS5m(p1t)$ls5[2]
   p1t$se=2; li2[i]=LS5m(p1t)$ls5[2]
   p1t$se=3; li3[i]=LS5m(p1t)$ls5[2]
-
+  
 }
 tikz("./fig/lambdastar1d.tex", width = 3.25, height = 3.25)
 plot(ai,1-4*ai*li,type="l",xlim=c(0,1),ylim=c(0,1),xlab="$a$",ylab="$\\lambda$",col="blue",lwd=1)
@@ -67,7 +168,6 @@ lines(ai,1-4*ai*li3,col="blue",lwd=3)
 lines(ai,li3,col="orange",lwd=3,lty=2)
 legend("topright",c("$\\lambda$ for center","$\\lambda$ for others"),col=c("blue","orange"),lty=c(1,2),cex=0.8)
 dev.off()
-
 ####### make plot for 2-dim model #######
 n1=31
 ai=li=li2=li3=rep(0,n1)
@@ -88,37 +188,7 @@ lines(ai,1-4*ai*li3,col="blue",lwd=3)
 lines(ai,li3,col="orange",lwd=3,lty=2)
 legend("topright",c("$\\lambda$ for center","$\\lambda$ for others"),col=c("blue","orange"),lty=c(1,2),cex=0.8)
 dev.off()
-
-
-
-####### 1. Estimation problem ######
-# 1. estimate a
-# 2. estimate r
-# 3. estimate covariance matrix
-n=para1$n; p=para1$p; i0=para1$i0; j0=para1$j0
-N=100 # number of replication
-# sbar_0=shat_0=ahat_0=ahat2_0=ahat22_0=bbar_0=bhat_0=rep(NA,N)
-# sbar_1=shat_1=ahat_1=ahat2_1=ahat22_1=bbar_1=bhat_1=rep(NA,N)
-
-R0=as.data.frame(matrix(NA,N,6))
-colnames(R0)=c("a_hat","a_bar","sij_hat","sij_bar","s_hat","s_bar")
-R1=R0
-
-for(k in 1:N){
-  # H0
-  data = mvrnorm(n, mu = rep(0,p), Sigma = S0); S=cov(data)
-  sbarfit=sigmabar(X=data,S=S,a=NULL,mu=ls1,para=para1) # sigmabar
-  R0[k,]=c(0,sbarfit$a, S[i0,j0],sbarfit$S[i0,j0], base::norm(S-S0,"F"),base::norm(sbarfit$S-S0,"F"))
-  # H1
-  data = mvrnorm(n, mu = rep(0,p), Sigma = S1); S=cov(data)
-  sbarfit=sigmabar(X=data,S=S,a=NULL,mu=ls1,para=para1) # sigmabar
-  R1[k,]=c(0,sbarfit$a, S[i0,j0],sbarfit$S[i0,j0], base::norm(S-S1,"F"),base::norm(sbarfit$S-S1,"F"))
-}
-apply(R0,2,mean)
-apply(R1,2,mean)
-apply(R0,2,sd)
-apply(R1,2,sd)
-
+###### 3.2 Plots for Estimation Problem ######
 ######## make plot for estimation results ######## 
 # Estimation of a
 tikz("./fig/est_a_h0.tex", width = 3.25, height = 3.25)
@@ -156,66 +226,7 @@ lines(density(R1[,"s_bar"]),col="blue",lty=1,lwd=1)
 # abline(v=S1[i0,j0],col="red",lty=1)
 legend("topright",c("$H_0$: $\\hat{S}$","$H_0$: $\\bar{S}$","$H_1$: $\\hat{S}$","$H_1$: $\\bar{S}$"),col=c("orange","blue","orange","blue"),lty=c(2,2,1,1),lwd=c(1,1,1,1),cex=0.5)
 dev.off()
-
-####### 2. Test problem ######
-######## 2.1. H0+H1 #########
-# 10: H0 for cov
-# 20: H0 for average cov
-# true covariance under H0: Sigma0
-n=1000 # sample size
-N=100 # number of replicates
-lmax10=lmax20=lmax30=rep(NA,N) # 1: coherence of S, 2: coherence of Sbar, 3: likelihood ratio, *0: null model 
-lmax11=lmax21=lmax31=rep(NA,N) # 1: coherence of S, 2: coherence of Sbar, 3: likelihood ratio, *1: alternative model 
-
-t0=proc.time()
-for(k in 1:N){
-  print(k)
-  # H0
-  data = mvrnorm(n, mu = rep(0,p), Sigma = S0); Shat=cov(data)
-  lmax10[k]=max(abs(Shat)*(S0==0))
-  Sbar0=sigmabar(X=data,S=Shat,a=NULL,mu=ls1,para=para1)$S
-  lmax20[k]=maxd.r(abs(Sbar0[2:(p-1),2:(p-1)]),4)#max(abs(Sbar)*(S0==0))
-  # H1
-  data = mvrnorm(n, mu = rep(0,p), Sigma = S1); Shat=cov(data)
-  lmax11[k]=max(abs(Shat)*(S0==0))
-  Sbar=sigmabar(X=data,S=Shat,a=NULL,mu=ls1,para=para1)$S
-  lmax21[k]=maxd.r(abs(Sbar[2:(p-1),2:(p-1)]),4)#max(abs(Sbar)*(S0==0))
-}
-t1=proc.time()-t0
-t1
-
-alpha=0.05
-############ cut-off ############
-# 10
-TS10=n*lmax10^2-4*log(p)+log(log(p)) # test statistics of lmax(coherence)
-CUT.simu10=quantile(TS10,1-alpha)
-CUT.asym10=-log(8*pi)-2*log(log(1/(1-alpha)))#y_alpha
-# 20
-TS20=n*lmax20^2-4*log(p)+log(log(p)) # test statistics of lmax(coherence)
-CUT.simu20=quantile(TS20,1-alpha)
-CUT.asym20=-log(8*pi)-2*log(log(1/(1-alpha)))#y_alpha
- 
-############ type I error ############
-# size 10
-mean(TS10>CUT.simu10) # by quantile definition, it is always 0.05
-ES10=mean(TS10>CUT.asym10) # Empirical size
-ES10
-# size 20
-mean(TS20>CUT.simu20) # by quantile definition, it is always 0.05
-ES20=mean(TS20>CUT.asym20) # Empirical size
-ES20
-
-############ type II error: power ############
-# 11
-TS11=n*lmax11^2-4*log(p)+log(log(p)) # coherence of S
-EP11=mean(TS11>CUT.simu10) # Empirical power
-EP11
-# 21
-TS21=n*lmax21^2-4*log(p)+log(log(p)) # coherence of Sbar
-EP21=mean(TS21>CUT.simu20) # Empirical power
-EP21
-
-
+###### 3.3 Plots for Test Problem ######
 ###### make plot of distribution of test statistics ######
 par(mfrow=c(1,1))
 tikz("./fig/test_stat_h0h1.tex", width = 3.25, height = 3.25)
@@ -246,9 +257,12 @@ apply(cbind(lmax10,lmax11,lmax20,lmax21),2,mean) # check variance reduction
 apply(cbind(lmax10,lmax11,lmax20,lmax21),2,sd)
 apply(cbind(lmax10,lmax11,lmax20,lmax21)^2,2,sd)
 
-
-
 mm=abs(Sbar0[2:(p-1),2:(p-1)])
+which(mm == maxd.r(mm,4), arr.ind = TRUE)
+mm=abs(Sbar[2:(p-1),2:(p-1)])
+which(mm == maxd.r(mm,4), arr.ind = TRUE)
+
+mm=abs(Shat[2:(p-1),2:(p-1)])
 which(mm == maxd.r(mm,4), arr.ind = TRUE)
 mm=abs(Sbar[2:(p-1),2:(p-1)])
 which(mm == maxd.r(mm,4), arr.ind = TRUE)

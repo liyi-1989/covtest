@@ -1,6 +1,6 @@
 library(MASS) # use mvnorm to generate multivariate normal
 library(Matrix) # use "dgCMatrix" matrix class, so that to make plot of a matrix like hand written order
-library(QRM)
+#library(QRM)
 #library(moments) # calculate higher order moments, skewness, kurtosis. not useful
 #library(pROC) # make ROC curve, not very useful currently
 
