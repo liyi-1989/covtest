@@ -79,12 +79,13 @@ TCM=function(para){
     A1[j0+p,i0]=a*r; A1[j0+p,j0]=a*sqrt(1-r^2)
     A1[j0-p,i0]=a*r; A1[j0-p,j0]=a*sqrt(1-r^2)
   }
+  p=para$p
   Sigma1=sf^2*A1%*%t(A1)+se^2*diag(rep(1,p))
   #C1=t(base::chol(Sigma1))
-  return(list(S0=Sigma0,S1=Sigma1))
+  return(list(S0=Sigma0,S1=Sigma1,A0=A0,A1=A1))
 }
 
-# Find optimal lambda (5 by 5)
+# Find optimal lambda (5 by 5) by theretical general results
 # S: sample covariance used to create covariance of sample covariance (of which Dmat is a 5 by 5 submatrix)
 # Amat: coeeficients for (center, up, right, down, left) for unbiasedness (=1)
 # para$i0, j0: position of the teleconnection (to calculate lambda star)
@@ -114,12 +115,45 @@ LS5=function(S,para,Amat=NULL){
   return(list(ls5=fit.qp$solution,obj=fit.qp$value,Dmat=Dmat,Amat=Amat))
 }
 
+# Find optimal lambda (5 by 5) by hand
+LS5m=function(para){
+  a=para$a; r=para$r; sf=para$sf; se=para$se; d=para$d
+  if(d==1){
+    d1=(4*a^4+4*a^2+r^2+1)*sf^4+(4*a^2+2)*se^2*sf^2+se^4
+    d2=(4*a^4+4*a^2+a^2*r^2+1)*sf^4+(4*a^2+2)*se^2*sf^2+se^4
+    r1=(4*a^3+2*a+a*r^2)*sf^4+2*a*se^2*sf^2
+    s1=(4*a^2+a^2*r^2)*sf^4
+    s2=(2*a^4+a^2+a^2*r^2)*sf^4+a^2*se^2*sf^2
+  }else if(d==2){
+    d1=(16*a^4+8*a^2+r^2+1)*sf^4+(8*a^2+2)*se^2*sf^2+se^4
+    d2=(16*a^4+8*a^2+a^2*r^2+1)*sf^4+(8*a^2+2)*se^2*sf^2+se^4
+    r1=(8*a^3+2*a+a*r^2)*sf^4+2*a*se^2*sf^2
+    s1=(4*a^2+a^2*r^2)*sf^4
+    s2=(4*a^4+a^2+a^2*r^2)*sf^4+a^2*se^2*sf^2
+  }
+  dmat=matrix(NA,5,5)
+  dmat[1,1]=d1 #k0 
+  dmat[2,2]=dmat[3,3]=dmat[4,4]=dmat[5,5]=d2
+  dmat[1,2]=dmat[1,3]=dmat[1,4]=dmat[1,5]=r1 # row 1
+  dmat[2,3]=dmat[3,4]=dmat[4,5]=dmat[2,5]=s1 #k1,3
+  dmat[2,4]=dmat[3,5]=s2 #k2
+  for(i in 2:5){
+    for(j in 1:(i-1)){
+      dmat[i,j]=dmat[j,i]
+    }
+  }
+  
+  lambda2=(a*d1-r1)/(d2+2*s1+s2-8*a*r1+4*a^2*d1)
+  ls5=c(1-4*a*lambda2,lambda2,lambda2,lambda2,lambda2)
+  return(list(ls5=ls5,obj=t(ls5)%*%Dmat%*%ls5/2,Dmat=dmat))
+}
+
 # Modify the sample covariance with lambda star filtering
 # X: data matrix
 # S: sample covariance matrix
 # mu: lambda star
 # bandwidth: filtering S starting away from "bandwidth"th diagonal
-sigmabar=function(X,S=NULL,a=NULL,mu,bandwidth=2){
+sigmabar=function(X,S=NULL,a=NULL,mu,bandwidth=2,para=NULL,sfknown=F){
   n=dim(X)[1]
   p=dim(X)[2]
   if(is.null(S)){
@@ -127,16 +161,23 @@ sigmabar=function(X,S=NULL,a=NULL,mu,bandwidth=2){
   }
   S1=S
   if(is.null(a)){
-    ahat=mean(diag(S[-p,-1]))/2
-    # ahat2=sqrt(mean(diag(S[-c(p-1,p),-c(1,2)])))
-    # ahat22=mean(sqrt(diag(S[-c(p-1,p),-c(1,2)])),na.rm=T)
+    if(sfknown){
+      k1=mean(diag(S[-p,-1]))
+      ahat=k1/(2*para$sf^2)
+    }else{
+      k1=mean(diag(S[-p,-1]))
+      k2=mean(diag(S[-c(p-1,p),-c(1,2)]))
+      ahat=2*k2/k1
+      # ahat2=sqrt(mean(diag(S[-c(p-1,p),-c(1,2)])))
+      # ahat22=mean(sqrt(diag(S[-c(p-1,p),-c(1,2)])),na.rm=T)
+    }
   }else{
     ahat=a
   }
   
-  for(i in bandwidth:(p-1)){
-    for(j in i:(p-1)){
-      if(abs(i-j)>=2){
+  for(i in bandwidth:(p-4)){
+    for(j in i:(p-2)){
+      if(abs(i-j)>=3){
         vs=c(S[i,j],S[i-1,j],S[i,j+1],S[i+1,j],S[i,j-1])
         S1[i,j]=S1[j,i]=crossprod(vs,mu)
       }
@@ -147,4 +188,50 @@ sigmabar=function(X,S=NULL,a=NULL,mu,bandwidth=2){
 }
 
 
+
+
+
+
+
+
+
+# loglikelihood=function(ab,X,S=NULL,sigma=1,i0,j0,type=0){
+#   a=ab[1]
+#   b=ab[2]
+#   n=dim(X)[1]
+#   p=dim(X)[2]
+#   if(is.null(S)){
+#     S=cov(X)
+#   }
+#   A0=mdiag.r(p,c(1,a))
+#   Sigma0=A0%*%t(A0)+sigma^2*diag(rep(1,p))
+#   temp0=-2*p*log(2*pi)-log(det(Sigma0))-sum(diag(solve(Sigma0)%*%S))
+#   
+#   if(type==0){
+#     return((n/2)*temp0)
+#   }else{
+#     A1=A0
+#     A1[i0,j0]=A1[j0,i0]=b
+#     Sigma1=A1%*%t(A1)+sigma^2*diag(rep(1,p))
+#     temp1=-2*p*log(2*pi)-log(det(Sigma1))-sum(diag(solve(Sigma1)%*%S))
+#     return((n/2)*temp1)
+#   }
+# }
+# 
+# lrt_a=function(data,S,i0,j0){
+#   # fit0=optimize(loglikelihood,c(-5, 5), tol = 0.001,maximum = T, X=data,S=S,i0=i0,j0=j0,b=b,type=0)
+#   # fit1=optimize(loglikelihood,c(-5, 5), tol = 0.001,maximum = T, X=data,S=S,i0=i0,j0=j0,b=b,type=1)
+#   # 
+#   # l0=fit0$objective
+#   # l1=fit1$objective
+#   
+#   fit0=optim(c(0,0), loglikelihood, control=list(fnscale=-1), X=data,S=S,i0=i0,j0=j0,type=0)
+#   fit1=optim(c(0,0), loglikelihood, control=list(fnscale=-1), X=data,S=S,i0=i0,j0=j0,type=1)
+#   
+#   l0=fit0$value
+#   l1=fit1$value
+#   
+#   return(2*(max(l1,l0)-l0))
+# }
+# 
 
