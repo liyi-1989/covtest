@@ -12,6 +12,12 @@ ses=1:3
 ns=c(500,1000,2000)#c(2,4,6,8,10,20,30,40,50)*100
 ps=c(50,100,150)#c(50,100,150,200,500,1000)
 
+aas=(0:5)/5
+rrs=(4:10)/10
+ses=1:3
+ns=c(2,4,6,8,10,20,30,40,50)*100
+ps=c(50,100,150,200,500,1000)
+
   
 df=NULL
 for(i1 in 1:length(aas)){
@@ -59,10 +65,10 @@ simu=function(jobid=1,paras,df=NULL){
     data = mvrnorm(n, mu = rep(0,p), Sigma = S0)
     Shat=cov(data)
     
-    hatfit=a_efratio_hat(S=Shat,d=para1$d) # estimate a, se/sf
+    hatfit=a_efratio_hat(S=Shat,p=p,d=para1$d) # estimate a, se/sf
     a_hat=hatfit[1]
     efratio_hat=hatfit[2]
-    lstar=LS5m(a=a_hat,ef_ratio=efratio_hat,d=para1$d)$ls5 # estimate lambda star
+    lstar=LS5m(a=a_hat,ef_ratio=ifelse(is.nan(efratio_hat),0,efratio_hat),d=para1$d)$ls5 # estimate lambda star
     #lstar=ls1
     Sbar=sigmabar(S=Shat,mu=lstar) # sigmabar
     
@@ -84,19 +90,19 @@ simu=function(jobid=1,paras,df=NULL){
     data = mvrnorm(n, mu = rep(0,p), Sigma = S1)
     Shat=cov(data)
     
-    hatfit=a_efratio_hat(S=Shat,d=para1$d) # estimate a, se/sf
+    hatfit=a_efratio_hat(S=Shat,p=p,d=para1$d) # estimate a, se/sf
     a_hat=hatfit[1]
     efratio_hat=hatfit[2]
-    lstar=LS5m(a=a_hat,ef_ratio=efratio_hat,d=para1$d)$ls5 # estimate lambda star
+    lstar=LS5m(a=a_hat,ef_ratio=ifelse(is.nan(efratio_hat),0,efratio_hat),d=para1$d)$ls5 # estimate lambda star
     #lstar=ls1
     Sbar=sigmabar(S=Shat,mu=lstar) # sigmabar
     
     sij_hat=Shat[i0,j0]
     sij_bar=Sbar[i0,j0]
-    s_hat_F=base::norm(Shat-S0,"F")
-    s_bar_F=base::norm(Sbar-S0,"F")
-    s_hat_2=base::norm(Shat-S0,"2")
-    s_bar_2=base::norm(Sbar-S0,"2")
+    s_hat_F=base::norm(Shat-S1,"F")
+    s_bar_F=base::norm(Sbar-S1,"F")
+    s_hat_2=base::norm(Shat-S1,"2")
+    s_bar_2=base::norm(Sbar-S1,"2")
     max_hat=max(abs(Shat)*(S0==0))
     max_bar=maxd.r(abs(Sbar[2:(p-1),2:(p-1)]),4)#max(abs(Sbar)*(S0==0))
     mm_hat=abs(Shat[2:(p-1),2:(p-1)])
@@ -127,7 +133,7 @@ simu=function(jobid=1,paras,df=NULL){
   cat("3. Save results ...\n")
   save(R0,R1,sij_0,sij_1,EP11,EP21,TS10,TS11,TS20,TS21,para1,file=paste0(filepath,filename,".RData"))
   
-  write.table(NULL,paste0("./results/finishing_job_",jobid,"_type_",type,".txt"))
+  write.table(NULL,paste0("./results/finishing_job_",jobid,".txt"))
   return(NULL)
 }
 

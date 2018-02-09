@@ -62,7 +62,7 @@ for(k in 1:N){
   data = mvrnorm(n, mu = rep(0,p), Sigma = S0)
   Shat=cov(data)
   
-  hatfit=a_efratio_hat(S=Shat,d=para1$d) # estimate a, se/sf
+  hatfit=a_efratio_hat(S=Shat,p=p,d=para1$d) # estimate a, se/sf
   a_hat=hatfit[1]
   efratio_hat=hatfit[2]
   lstar=LS5m(a=a_hat,ef_ratio=efratio_hat,d=para1$d)$ls5 # estimate lambda star
@@ -87,7 +87,7 @@ for(k in 1:N){
   data = mvrnorm(n, mu = rep(0,p), Sigma = S1)
   Shat=cov(data)
   
-  hatfit=a_efratio_hat(S=Shat,d=para1$d) # estimate a, se/sf
+  hatfit=a_efratio_hat(S=Shat,p=p,d=para1$d) # estimate a, se/sf
   a_hat=hatfit[1]
   efratio_hat=hatfit[2]
   lstar=LS5m(a=a_hat,ef_ratio=efratio_hat,d=para1$d)$ls5 # estimate lambda star
@@ -96,10 +96,10 @@ for(k in 1:N){
   
   sij_hat=Shat[i0,j0]
   sij_bar=Sbar[i0,j0]
-  s_hat_F=base::norm(Shat-S0,"F")
-  s_bar_F=base::norm(Sbar-S0,"F")
-  s_hat_2=base::norm(Shat-S0,"2")
-  s_bar_2=base::norm(Sbar-S0,"2")
+  s_hat_F=base::norm(Shat-S1,"F")
+  s_bar_F=base::norm(Sbar-S1,"F")
+  s_hat_2=base::norm(Shat-S1,"2")
+  s_bar_2=base::norm(Sbar-S1,"2")
   max_hat=max(abs(Shat)*(S0==0))
   max_bar=maxd.r(abs(Sbar[2:(p-1),2:(p-1)]),4)#max(abs(Sbar)*(S0==0))
   mm_hat=abs(Shat[2:(p-1),2:(p-1)])

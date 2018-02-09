@@ -150,7 +150,7 @@ LS5m=function(a,ef_ratio,d){
   return(list(ls5=ls5,obj=t(ls5)%*%dmat%*%ls5/2,Dmat=dmat))
 }
 
-a_efratio_hat=function(S,d=1,sf=NULL){
+a_efratio_hat=function(S,p,d=1,sf=NULL){
   if(d==1){
     if(is.null(sf)){
       k0=mean(diag(S[c(-1,-p),c(-1,-p)]))
