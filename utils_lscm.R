@@ -166,9 +166,25 @@ a_efratio_hat=function(S,p,d=1,sf=NULL){
       ef_ratio=se/sf
     }
   }else if(d==2){
-    
+    if(is.null(sf)){
+      k0=mean(myDiag(S,0))
+      k1=mean(c(myDiag(S,1)))
+      k2=mean(c(myDiag(S,2)))
+      a_hat=2*k2/k1
+      ef_ratio=(2*a_hat*k0-4*p*a_hat^2-p+4*a_hat^2)/p #cov (use k0)
+      ef_ratio=sqrt(4*k2/(k1^2)-16*(k2/k1)^2-1) # cor (use k1,k2)
+      #ef_ratio=2*a_hat/k1-4*a_hat^2-1
+    }else{ # sf is known, which is not very possible
+      
+    }
   }
   return(c(a_hat,ef_ratio))
+}
+
+
+
+myDiag <- function(x,k) {
+  x[row(x) == col(x) - k]
 }
 
 # Modify the sample covariance with lambda star filtering

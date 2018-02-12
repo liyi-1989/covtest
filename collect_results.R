@@ -1,4 +1,5 @@
-setwd("./results/small_simu_each_3/")
+#setwd("./results/small_simu_each_3/")
+setwd("./results/large_simu/")
 load("./results.df.RData")
 
 
@@ -22,10 +23,19 @@ for(jobid in 1:nrow(df)){
   EP2[jobid]=EP21
 }
 
-#XXX=cbind(df,mean0,sd0)
-
-dfep=cbind(df,EP1,EP2,EP2>=EP1)[,-(1:5)]
 
 
-plot(dfep[,"n"],dfep[,"EP1"])
+dfep=cbind(df,EP1,EP2)[,-(1:5)]
+dfep=rbind(cbind(df,EP1,1),cbind(df,EP2,2))
+colnames(dfep)=c(colnames(df),"EP","hat1bar2")
+dfep=as.data.frame(dfep)
 
+library(reshape2)
+
+
+dfepw=reshape2::dcast(dfep, se+a+r~p+n+hat1bar2, value.var = "EP")
+write.table(dfepw,file = "dfepw.csv",row.names = F)
+
+
+dfepw=reshape2::dcast(subset(dfep,se==3&p==1000), se+a+r~n+hat1bar2, value.var = "EP")
+write.table(dfepw,file = "temp.csv",row.names = F)
