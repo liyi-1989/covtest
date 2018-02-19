@@ -6,13 +6,13 @@ source('utils_lscm.R')
 #library(fields)
 library(mvtnorm)
 #library(matrixcalc)
-#library(tikzDevice)
+library(tikzDevice)
 ####### 0. True Covariance Model ######
 # parameters (N: number of replication)
 para1=list(p=100,n=1000,a=0.9,r=0.8,sf=1,se=2,i0=NULL,j0=NULL,M=NULL,d=1,method="equalvar",N=100) # one-dimensional model
 para1$i0=round(para1$p*0.23); para1$j0=round(para1$p*0.77)
 #para1$M=Mp(para1$p)
-#para2=para1; para2$d=2 # two-dimensional model 
+para2=para1; para2$d=2 # two-dimensional model 
 
 covmodel=TCM(para1) # generating true covariance model
 S0=covmodel$S0; S1=covmodel$S1
@@ -60,7 +60,7 @@ set.seed(1)
 for(k in 1:N){
   #============== H0 ==============
   data = mvrnorm(n, mu = rep(0,p), Sigma = S0)
-  Shat=cov(data)
+  Shat=cor(data)
   
   hatfit=a_efratio_hat(S=Shat,p=p,d=para1$d) # estimate a, se/sf
   a_hat=hatfit[1]
@@ -85,7 +85,7 @@ for(k in 1:N){
   R0[k,]=c(a_hat,efratio_hat,sij_hat,sij_bar,s_hat_F,s_bar_F,s_hat_2,s_bar_2,max_hat,max_bar,mm_hat_ji[1,],mm_bar_ji[1,])
   #============== H1 ==============
   data = mvrnorm(n, mu = rep(0,p), Sigma = S1)
-  Shat=cov(data)
+  Shat=cor(data)
   
   hatfit=a_efratio_hat(S=Shat,p=p,d=para1$d) # estimate a, se/sf
   a_hat=hatfit[1]
@@ -154,9 +154,9 @@ ai=li=li2=li3=rep(0,n1)
 p1t=para1
 for(i in 1:n1){
   p1t$a=ai[i]=(i-1)/30
-  p1t$se=1; li[i]=LS5m(p1t)$ls5[2]
-  p1t$se=2; li2[i]=LS5m(p1t)$ls5[2]
-  p1t$se=3; li3[i]=LS5m(p1t)$ls5[2]
+  p1t$se=1; li[i]=LS5m(p1t$a,ef_ratio = p1t$se/p1t$sf,d=p1t$d)$ls5[2]
+  p1t$se=2; li2[i]=LS5m(p1t$a,ef_ratio = p1t$se/p1t$sf,d=p1t$d)$ls5[2]
+  p1t$se=3; li3[i]=LS5m(p1t$a,ef_ratio = p1t$se/p1t$sf,d=p1t$d)$ls5[2]
   
 }
 tikz("./fig/lambdastar1d.tex", width = 3.25, height = 3.25)
@@ -174,9 +174,9 @@ ai=li=li2=li3=rep(0,n1)
 p1t=para2
 for(i in 1:n1){
   p1t$a=ai[i]=(i-1)/30
-  p1t$se=1; li[i]=LS5m(p1t)$ls5[2]
-  p1t$se=2; li2[i]=LS5m(p1t)$ls5[2]
-  p1t$se=3; li3[i]=LS5m(p1t)$ls5[2]
+  p1t$se=1; li[i]=LS5m(p1t$a,ef_ratio = p1t$se/p1t$sf,d=p1t$d)$ls5[2]
+  p1t$se=2; li2[i]=LS5m(p1t$a,ef_ratio = p1t$se/p1t$sf,d=p1t$d)$ls5[2]
+  p1t$se=3; li3[i]=LS5m(p1t$a,ef_ratio = p1t$se/p1t$sf,d=p1t$d)$ls5[2]
   
 }
 tikz("./fig/lambdastar2d.tex", width = 3.25, height = 3.25)
@@ -192,29 +192,39 @@ dev.off()
 ######## make plot for estimation results ######## 
 # Estimation of a
 tikz("./fig/est_a_h0.tex", width = 3.25, height = 3.25)
-hist(R0[,"a_bar"],ylim=c(0,20), main="$H_0$: estimation of a",xlab="a",ylab="density",breaks=25)
-lines(density(R0[,"a_bar"]),lty=1,col="blue")
+hist(R0[,"a_hat"],ylim=c(0,20), main="$H_0$: estimation of a",xlab="a",ylab="density",breaks=25)
+lines(density(R0[,"a_hat"]),lty=1,col="blue")
 abline(v=para1$a,col="red",lty=4)
-abline(v=mean(R0[,"a_bar"]),col="blue",lty=4)
+abline(v=mean(R0[,"a_hat"]),col="blue",lty=4)
 dev.off()
 
 tikz("./fig/est_a_h1.tex", width = 3.25, height = 3.25)
-hist(R1[,"a_bar"],ylim=c(0,20), main="$H_1$: estimation of a",xlab="a",ylab="density",breaks=25)
-lines(density(R1[,"a_bar"]),lty=1,col="blue")
+hist(R1[,"a_hat"],ylim=c(0,20), main="$H_1$: estimation of a",xlab="a",ylab="density",breaks=25)
+lines(density(R1[,"a_hat"]),lty=1,col="blue")
 abline(v=para1$a,col="red",lty=4)
-abline(v=mean(R1[,"a_bar"]),col="blue",lty=4)
+abline(v=mean(R1[,"a_hat"]),col="blue",lty=4)
 dev.off()
 
 # Estimation of S_{i0j0}
 tikz("./fig/h0h1dis.tex", width = 3.25, height = 3.25)
-plot(density(R0[,"sij_hat"]),col="orange",lty=2,lwd=1,xlab="$S_{i_0j_0}$",main="$H_0$ and $H_1$ distributions",ylim=c(0,4),xlim=range(c(R0[,"sij_hat"],R0[,"sij_bar"],R1[,"sij_hat"],R1[,"sij_bar"])))
+plot(density(R0[,"sij_hat"]),col="orange",lty=2,lwd=1,xlab="$\\Sigma_{i^*,j^*}$",main="$H_0$ and $H_1$ distributions",ylim=c(0,4),xlim=range(c(R0[,"sij_hat"],R0[,"sij_bar"],R1[,"sij_hat"],R1[,"sij_bar"])))
 lines(density(R0[,"sij_bar"]),col="blue",lty=2,lwd=1)
 lines(density(R1[,"sij_hat"]),col="orange",lty=1,lwd=1)
 lines(density(R1[,"sij_bar"]),col="blue",lty=1,lwd=1)
-abline(v=S0[i0,j0],col="red",lty=1)
-abline(v=S1[i0,j0],col="red",lty=1)
-legend("topright",c("$H_0$: $\\hat{S}_{i_0j_0}$","$H_0$: $\\bar{S}_{i_0j_0}$","$H_1$: $\\hat{S}_{i_0j_0}$","$H_1$: $\\bar{S}_{i_0j_0}$"),col=c("orange","blue","orange","blue"),lty=c(2,2,1,1),lwd=c(1,1,1,1),cex=0.5)
+abline(v=S0[i0,j0],col="grey",lty=1)
+abline(v=S1[i0,j0],col="grey",lty=1)
+legend("topright",c("$H_0$: $\\hat{\\Sigma}_{i^*,j^*}$","$H_0$: $\\bar{\\Sigma}_{i^*,j^*}$","$H_1$: $\\hat{\\Sigma}_{i^*,j^*}$","$H_1$: $\\bar{\\Sigma}_{i^*,j^*}$"),col=c("orange","blue","orange","blue"),lty=c(2,2,1,1),lwd=c(1,1,1,1),cex=0.5)
 dev.off()
+
+#cor
+plot(density(R0[,"sij_hat"]),col="orange",lty=2,lwd=1,xlab="$\\Sigma_{i^*,j^*}$",main="$H_0$ and $H_1$ distributions",ylim=c(0,20),xlim=range(c(R0[,"sij_hat"],R0[,"sij_bar"],R1[,"sij_hat"],R1[,"sij_bar"])))
+lines(density(R0[,"sij_bar"]),col="blue",lty=2,lwd=1)
+lines(density(R1[,"sij_hat"]),col="orange",lty=1,lwd=1)
+lines(density(R1[,"sij_bar"]),col="blue",lty=1,lwd=1)
+abline(v=S0[i0,j0]/(2*0^2+1+2^2),col="grey",lty=1)
+abline(v=S1[i0,j0]/(2*0.9^2+1+2^2),col="grey",lty=1)
+legend("topright",c("$H_0$: $\\hat{\\Sigma}_{i^*,j^*}$","$H_0$: $\\bar{\\Sigma}_{i^*,j^*}$","$H_1$: $\\hat{\\Sigma}_{i^*,j^*}$","$H_1$: $\\bar{\\Sigma}_{i^*,j^*}$"),col=c("orange","blue","orange","blue"),lty=c(2,2,1,1),lwd=c(1,1,1,1),cex=0.5)
+
 
 # Estimation of S
 tikz("./fig/est_s.tex", width = 3.25, height = 3.25)
@@ -230,12 +240,12 @@ dev.off()
 ###### make plot of distribution of test statistics ######
 par(mfrow=c(1,1))
 tikz("./fig/test_stat_h0h1.tex", width = 3.25, height = 3.25)
-plot(density(TS10),col="orange",lty=2,lwd=1,xlab="TS",main="$H_0$ and $H_1$ distributions",xlim=range(c(TS10,TS11,TS20,TS21)))
+plot(density(TS10),col="orange",lty=2,lwd=1,xlab="TS",main="$H_0$ and $H_1$ distributions",ylim=c(0,0.21),xlim=range(c(TS10,TS11,TS20,TS21)))
 lines(density(TS20),col="blue",lty=2,lwd=1)
 lines(density(TS11),col="orange",lty=1,lwd=1)
 lines(density(TS21),col="blue",lty=1,lwd=1)
-abline(v=CUT.simu10,lty=1,col="grey")
-abline(v=CUT.simu20,lty=1,col="grey")
+abline(v=quantile(TS10,1-alpha),lty=1,col="grey")
+abline(v=quantile(TS20,1-alpha),lty=1,col="grey")
 legend("topright",c("$H_0$: TS with $\\hat{S}$","$H_0$: TS with $\\bar{S}$","$H_1$: TS with $\\hat{S}$","$H_1$: TS with $\\bar{S}$"),col=c("orange","blue","orange","blue"),lty=c(2,2,1,1),lwd=c(1,1,1,1),cex=0.5)
 dev.off()
 
@@ -250,7 +260,7 @@ lines(density(lmax11),col="orange",lty=1,lwd=1)
 lines(density(lmax21),col="blue",lty=1,lwd=1)
 abline(v=quantile(lmax10,1-alpha),lty=1,col="grey")
 abline(v=quantile(lmax20,1-alpha),lty=1,col="grey")
-legend("topright",c("$H_0$: TS with $\\hat{S}$","$H_0$: TS with $\\bar{S}$","$H_1$: TS with $\\hat{S}$","$H_1$: TS with $\\bar{S}$"),col=c("orange","blue","orange","blue"),lty=c(2,2,1,1),lwd=c(1,1,1,1),cex=0.5)
+legend("topright",c("$H_0$: L with $\\hat{S}$","$H_0$: L with $\\bar{S}$","$H_1$: L with $\\hat{S}$","$H_1$: L with $\\bar{S}$"),col=c("orange","blue","orange","blue"),lty=c(2,2,1,1),lwd=c(1,1,1,1),cex=0.5)
 dev.off()
 
 apply(cbind(lmax10,lmax11,lmax20,lmax21),2,mean) # check variance reduction 

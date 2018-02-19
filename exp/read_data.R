@@ -15,7 +15,12 @@ X=X[, length(LAT):1, ]
 X=X[c((NLON/2+1):NLON,1:(NLON/2)),,]
 
 
-
+idlon=(1:18)*8
+idlat=(1:18)*4
+NLON=NLAT=18
+LON=LON[idlon]
+LAT=LAT[idlat]
+X=X[idlon,idlat,]
 
 
 

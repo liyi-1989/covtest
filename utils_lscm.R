@@ -91,21 +91,21 @@ TCM=function(para){
 # Amat: coeeficients for (center, up, right, down, left) for unbiasedness (=1)
 # para$i0, j0: position of the teleconnection (to calculate lambda star)
 LS5=function(S,para,Amat=NULL){
-  n=para$n; i0=para$i0; j0=para$j0; d=para$d; M=para$M
+  n=para$n; i0=para$i0; j0=para$j0; d=para$d; M=para$M; dd=para$dd
   C1=t(base::chol(S))
-  Dmat=matrix(NA,5,5)
+  Dmat=matrix(NA,dd,dd)
   dfi0j0=data.frame(i0=c(i0,i0-1,i0,i0+1,i0),j0=c(j0,j0,j0+1,j0,j0-1))
-  for(i in 1:5){
-    for(j in 1:5){
+  for(i in 1:dd){
+    for(j in 1:dd){
       i1=dfi0j0[i,"i0"]; j1=dfi0j0[i,"j0"]
       i2=dfi0j0[j,"i0"]; j2=dfi0j0[j,"j0"]
       Dmat[i,j]=ijthcovcov(C=C1,M=M,df=n,i1=i1,j1=j1,i2=i2,j2=j2)
     }
   }
-  dvec=rep(0,5)
+  dvec=rep(0,dd)
   if(is.null(Amat)){
     a=para$a
-    Amat=matrix(c(1,a,a,a,a),5,1)
+    Amat=matrix(c(1,a,a,a,a),dd,1)
   }
   bvec=1
   fit.qp=quadprog::solve.QP(Dmat,dvec,Amat,bvec,meq=1)
@@ -117,7 +117,7 @@ LS5=function(S,para,Amat=NULL){
 }
 
 # Find optimal lambda (5 by 5) by hand
-LS5m=function(a,ef_ratio,d){
+LS5m=function(a,ef_ratio,d,dd=5){
   r=sf=1; se=ef_ratio
   # This calculation need r, but the result has nothing to do with r
   if(d==1){

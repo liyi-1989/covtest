@@ -30,7 +30,7 @@ count=0
 for(i in 1:NLON){
   for(j in 1:NLAT){
     count=count+1
-    dfv=rbind(dfv,c(count,i,j,LON[i],LAT[j],X[i,j,372+360+1]))
+    dfv=rbind(dfv,c(count,i,j,LON[i],LAT[j],X[i,j,1]))#372+360+1
   }
 }
 colnames(dfv)=c("vertex","idlon","idlat","lon","lat","x")
