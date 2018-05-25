@@ -9,15 +9,33 @@ library(mvtnorm)
 library(tikzDevice)
 ####### 0. True Covariance Model ######
 # parameters (N: number of replication)
-para1=list(p=100,n=1000,a=0.9,r=0.8,sf=1,se=2,i0=NULL,j0=NULL,M=NULL,d=1,method="equalvar",N=100) # one-dimensional model
+para1=list(p=100,n=1000,a=0.9,r=0.8,sf=1,se=2,i0=NULL,j0=NULL,M=NULL,d=1,dd=5,py=NULL,method="equalvar",N=100) # one-dimensional model
 para1$i0=round(para1$p*0.23); para1$j0=round(para1$p*0.77)
-#para1$M=Mp(para1$p)
-para2=para1; para2$d=2 # two-dimensional model 
+para1$M=Mp(para1$p)
+para2=para1; para2$d=2; para2$dd=9; para2$py=10 # two-dimensional model 
 
 covmodel=TCM(para1) # generating true covariance model
 S0=covmodel$S0; S1=covmodel$S1
 ls5fit=LS5(S1,para1)
-ls1=ls5fit$ls5 # find optimal lambda star #Dmat=ls5fit$Dmat; Amat=ls5fit$Amat
+ls5fit$ls5 # find optimal lambda star #Dmat=ls5fit$Dmat; Amat=ls5fit$Amat
+sqrt(crossprod(ls5fit$ls5))
+ls5fit$Dmat
+
+t(ls5fit$ls5)%*%ls5fit$Dmat%*%ls5fit$ls5
+
+ll=matrix(c(1,0,0,0,0),5,1)
+t(ll)%*%ls5fit$Dmat%*%ll
+
+ls5fit$obj
+
+ls5mfit=LS5m(a=0.6,ef_ratio=2,d=2,dd=9,sf=1,r=0.8)
+ls5mfit$ls5
+ls5mfit$Dmat
+
+abs(ls5fit$Dmat-ls5mfit$Dmat)<1e-4
+
+solve(ls5mfit$Dmat)%*%c(1,a,a,a,a,a,a,a,a)
+
 
 ####### 0.1 small simulation #######
 # # double check optimal variance, i.e. objective (if variance reduced significantly)
@@ -60,7 +78,7 @@ set.seed(1)
 for(k in 1:N){
   #============== H0 ==============
   data = mvrnorm(n, mu = rep(0,p), Sigma = S0)
-  Shat=cor(data)
+  Shat=cov(data)
   
   hatfit=a_efratio_hat(S=Shat,p=p,d=para1$d) # estimate a, se/sf
   a_hat=hatfit[1]
@@ -85,7 +103,7 @@ for(k in 1:N){
   R0[k,]=c(a_hat,efratio_hat,sij_hat,sij_bar,s_hat_F,s_bar_F,s_hat_2,s_bar_2,max_hat,max_bar,mm_hat_ji[1,],mm_bar_ji[1,])
   #============== H1 ==============
   data = mvrnorm(n, mu = rep(0,p), Sigma = S1)
-  Shat=cor(data)
+  Shat=cov(data)
   
   hatfit=a_efratio_hat(S=Shat,p=p,d=para1$d) # estimate a, se/sf
   a_hat=hatfit[1]
@@ -93,6 +111,8 @@ for(k in 1:N){
   lstar=LS5m(a=a_hat,ef_ratio=efratio_hat,d=para1$d)$ls5 # estimate lambda star
   #lstar=ls1
   Sbar=sigmabar(S=Shat,mu=lstar) # sigmabar
+  
+  print(Shat[(i0-1):(i0+1),(j0-1):(j0+1)])
   
   sij_hat=Shat[i0,j0]
   sij_bar=Sbar[i0,j0]
@@ -160,13 +180,13 @@ for(i in 1:n1){
   
 }
 tikz("./fig/lambdastar1d.tex", width = 3.25, height = 3.25)
-plot(ai,1-4*ai*li,type="l",xlim=c(0,1),ylim=c(0,1),xlab="$a$",ylab="$\\lambda$",col="blue",lwd=1)
+plot(ai,1-4*ai*li,type="l",xlim=c(0,1),ylim=c(0,1),xlab="$a$",ylab="$\\lambda^*$",col="blue",lwd=1)
 lines(ai,li,col="orange",lwd=1,lty=2)
 lines(ai,1-4*ai*li2,col="blue",lwd=2)
 lines(ai,li2,col="orange",lwd=2,lty=2)
 lines(ai,1-4*ai*li3,col="blue",lwd=3)
 lines(ai,li3,col="orange",lwd=3,lty=2)
-legend("topright",c("$\\lambda$ for center","$\\lambda$ for others"),col=c("blue","orange"),lty=c(1,2),cex=0.8)
+legend("topright",c("$\\lambda_1^*$","$\\lambda_2^*$"),col=c("blue","orange"),lty=c(1,2),cex=0.8)
 dev.off()
 ####### make plot for 2-dim model #######
 n1=31
@@ -240,7 +260,7 @@ dev.off()
 ###### make plot of distribution of test statistics ######
 par(mfrow=c(1,1))
 tikz("./fig/test_stat_h0h1.tex", width = 3.25, height = 3.25)
-plot(density(TS10),col="orange",lty=2,lwd=1,xlab="TS",main="$H_0$ and $H_1$ distributions",ylim=c(0,0.21),xlim=range(c(TS10,TS11,TS20,TS21)))
+plot(density(TS10),col="orange",lty=2,lwd=1,xlab="TS",main="$H_0$ and $H_1$ distributions",ylim=c(0,0.005),xlim=range(c(TS10,TS11,TS20,TS21)))
 lines(density(TS20),col="blue",lty=2,lwd=1)
 lines(density(TS11),col="orange",lty=1,lwd=1)
 lines(density(TS21),col="blue",lty=1,lwd=1)

@@ -15,7 +15,7 @@ ithrowkron=function(C,i0,j0){
 
 # used to compute covariance of sample covariance matrix
 # compute the covariance between sigma(i1,j1) and sigma(i2,j2)
-ijthcovcov=function(C,M,df,i1,j1,i2,j2){
+ijthcovcov=function(C,M,df,i1,j1,i2,j2,method=2){
   # compute the (i,j)th element of cov(vec(S))
   # this matrix is too large to store the whole thing, that's why we calculate one by one
   # i=(j1-1)p+i1; j=(j2-1)p+i2; p is dimension of S
@@ -24,7 +24,15 @@ ijthcovcov=function(C,M,df,i1,j1,i2,j2){
   
   vi=as.matrix(ithrowkron(C,i1,j1))
   vj=as.matrix(ithrowkron(C,i2,j2))
-  ijcovcov=t(vi)%*%M%*%vj
+  
+  if(method==1){
+    ijcovcov=t(vi)%*%M%*%vj
+  }else{
+    vit=as.matrix(c(t(matrix(vi,p,p))))
+    
+    ijcovcov=t(vi)%*%vj+t(vit)%*%vj
+  }
+  
   return(df*ijcovcov[1,1])
 }
 
@@ -50,7 +58,8 @@ Mp=function(p){
 #                                             2: two-dim grid, neighbours are left, right, up, down)
 # M: strange matrix used in covariance of sample covariance matrix
 TCM=function(para){
-  a=para$a; r=para$r; sf=para$sf; se=para$se; p=para$p; n=para$n; i0=para$i0; j0=para$j0; d=para$d; M=para$M
+  a=para$a; r=para$r; sf=para$sf; se=para$se; p=para$p; n=para$n; i0=para$i0; j0=para$j0; d=para$d; M=para$M; py=para$py
+  la=length(a)
   if(para$method=="unequalvar"){
     A0=mdiag.r(p,c(1,a)); Sigma0=sf^2*A0%*%t(A0)+se^2*diag(rep(1,p))
     A1=A0;
@@ -62,25 +71,28 @@ TCM=function(para){
     A0=mdiag.r(p,c(1,a)); Sigma0=sf^2*A0%*%t(A0)+se^2*diag(rep(1,p))
     A1=A0; 
     A1[j0,i0]=r; A1[j0,j0]=sqrt(1-r^2); 
-    A1[j0+1,i0]=a*r; A1[j0+1,j0]=a*sqrt(1-r^2)
-    A1[j0-1,i0]=a*r; A1[j0-1,j0]=a*sqrt(1-r^2)
+    A1[j0+1:la,i0]=a*r; A1[j0+1:la,j0]=a*sqrt(1-r^2)
+    A1[j0-1:la,i0]=a*r; A1[j0-1:la,j0]=a*sqrt(1-r^2)
   }else if(d==2){
-    p=sqrt(para$p)
-    A0=mdiag(p^2,c(1,a))
-    for(i in 1:(p^2)){
-      if(i+p<=p^2) A0[i,i+p]=a
-      if(i-p>=0) A0[i,i-p]=a
+    A0=mdiag.r(p,c(1,a))
+    
+    for(l in 1:la){
+      for(i in 1:p){
+        if(i+py+l-1<=p) A0[i,i+py+l-1]=a[l]
+        if(i-py+l-1>=0) A0[i,i-py-l+1]=a[l]
+      }
     }
-    Sigma0=A0%*%t(A0)+sigma^2*diag(rep(1,p^2))
+    
+
+    Sigma0=A0%*%t(A0)+se^2*diag(rep(1,p))
     
     A1=A0
     A1[j0,i0]=r; A1[j0,j0]=sqrt(1-r^2); 
-    A1[j0+1,i0]=a*r; A1[j0+1,j0]=a*sqrt(1-r^2)
-    A1[j0-1,i0]=a*r; A1[j0-1,j0]=a*sqrt(1-r^2)
-    A1[j0+p,i0]=a*r; A1[j0+p,j0]=a*sqrt(1-r^2)
-    A1[j0-p,i0]=a*r; A1[j0-p,j0]=a*sqrt(1-r^2)
+    A1[j0+1:la,i0]=a*r; A1[j0+1:la,j0]=a*sqrt(1-r^2)
+    A1[j0-1:la,i0]=a*r; A1[j0-1:la,j0]=a*sqrt(1-r^2)
+    A1[j0+py:(py+la-1),i0]=a*r; A1[j0+py:(py+la-1),j0]=a*sqrt(1-r^2)
+    A1[j0-py:(py+la-1),i0]=a*r; A1[j0-py:(py+la-1),j0]=a*sqrt(1-r^2)
   }
-  p=para$p
   Sigma1=sf^2*A1%*%t(A1)+se^2*diag(rep(1,p))
   #C1=t(base::chol(Sigma1))
   return(list(S0=Sigma0,S1=Sigma1,A0=A0,A1=A1))
@@ -91,21 +103,29 @@ TCM=function(para){
 # Amat: coeeficients for (center, up, right, down, left) for unbiasedness (=1)
 # para$i0, j0: position of the teleconnection (to calculate lambda star)
 LS5=function(S,para,Amat=NULL){
-  n=para$n; i0=para$i0; j0=para$j0; d=para$d; M=para$M; dd=para$dd
+  n=para$n; i0=para$i0; j0=para$j0; d=para$d; M=para$M; dd=para$dd; py=para$py
   C1=t(base::chol(S))
   Dmat=matrix(NA,dd,dd)
-  dfi0j0=data.frame(i0=c(i0,i0-1,i0,i0+1,i0),j0=c(j0,j0,j0+1,j0,j0-1))
+  if(dd==5){
+    dfi0j0=data.frame(i0=c(i0,i0-1,i0,i0+1,i0),j0=c(j0,j0,j0+1,j0,j0-1))
+  }else if(dd==9){
+    dfi0j0=data.frame(i0=c(i0,i0-1,i0,i0+1,i0,i0-py,i0,i0+py,i0),j0=c(j0,j0,j0+1,j0,j0-1,j0,j0+py,j0,j0-py))
+  }
   for(i in 1:dd){
     for(j in 1:dd){
       i1=dfi0j0[i,"i0"]; j1=dfi0j0[i,"j0"]
       i2=dfi0j0[j,"i0"]; j2=dfi0j0[j,"j0"]
-      Dmat[i,j]=ijthcovcov(C=C1,M=M,df=n,i1=i1,j1=j1,i2=i2,j2=j2)
+      Dmat[i,j]=ijthcovcov(C=C1,M=M,df=1,i1=i1,j1=j1,i2=i2,j2=j2)
     }
   }
   dvec=rep(0,dd)
   if(is.null(Amat)){
-    a=para$a
-    Amat=matrix(c(1,a,a,a,a),dd,1)
+    a=para$a[1]
+    if(dd==5){
+      Amat=matrix(c(1,a,a,a,a),dd,1)
+    }else if(dd==9){
+      Amat=matrix(c(1,a,a,a,a,a,a,a,a),dd,1)
+    }
   }
   bvec=1
   fit.qp=quadprog::solve.QP(Dmat,dvec,Amat,bvec,meq=1)
@@ -117,8 +137,8 @@ LS5=function(S,para,Amat=NULL){
 }
 
 # Find optimal lambda (5 by 5) by hand
-LS5m=function(a,ef_ratio,d,dd=5){
-  r=sf=1; se=ef_ratio
+LS5m=function(a,ef_ratio,d,dd=5,sf=1,r=1){
+  se=ef_ratio
   # This calculation need r, but the result has nothing to do with r
   if(d==1){
     d1=(4*a^4+4*a^2+r^2+1)*sf^4+(4*a^2+2)*se^2*sf^2+se^4
@@ -132,25 +152,62 @@ LS5m=function(a,ef_ratio,d,dd=5){
     r1=(8*a^3+2*a+a*r^2)*sf^4+2*a*se^2*sf^2
     s1=(4*a^2+a^2*r^2)*sf^4
     s2=(4*a^4+a^2+a^2*r^2)*sf^4+a^2*se^2*sf^2
+    s3=(8*a^4+2*a^2+a^2*r^2)*sf^4+2*a^2*se^2*sf^2
   }
-  dmat=matrix(NA,5,5)
-  dmat[1,1]=d1 #k0
-  dmat[2,2]=dmat[3,3]=dmat[4,4]=dmat[5,5]=d2
-  dmat[1,2]=dmat[1,3]=dmat[1,4]=dmat[1,5]=r1 # row 1
-  dmat[2,3]=dmat[3,4]=dmat[4,5]=dmat[2,5]=s1 #k1,3
-  dmat[2,4]=dmat[3,5]=s2 #k2
-  for(i in 2:5){
+  # create dmat
+  dmat=matrix(NA,dd,dd)
+  diag(dmat)=c(d1,rep(d2,dd-1))
+  dmat[1,2:dd]=r1  
+  base::diag(dmat[2:(dd-1),3:dd])=s1; 
+  if(dd==5){
+    dmat[2,5]=s1
+    dmat[2,4]=dmat[3,5]=s2 #k2
+  }else if(dd==9){
+    base::diag(dmat[2:(dd-3),5:dd])=s1
+    base::diag(dmat[2:(dd-5),7:dd])=s1; dmat[2,9]=s1
+    dmat[2,8]=dmat[3,9]=s3
+    base::diag(dmat[2:5,6:9])=s3
+    dmat[2,4]=dmat[3,5]=dmat[6,8]=dmat[7,9]=s2; dmat[4,6]=dmat[5,7]=s3
+  }
+
+  for(i in 2:dd){
     for(j in 1:(i-1)){
       dmat[i,j]=dmat[j,i]
     }
   }
 
   lambda2=(a*d1-r1)/(d2+2*s1+s2-8*a*r1+4*a^2*d1)
-  ls5=c(1-4*a*lambda2,lambda2,lambda2,lambda2,lambda2)
+  if(dd==5){
+    lambda2=(a*d1-r1)/(d2+2*s1+s2-8*a*r1+4*a^2*d1)
+    ls5=c(1-4*a*lambda2,lambda2,lambda2,lambda2,lambda2)
+  }else if(dd==9){
+    lambda2=(a*d1-r1)/(d2+4*s1+s2+2*s3-16*a*r1+8*a^2*d1)
+    ls5=c(1-8*a*lambda2,lambda2,lambda2,lambda2,lambda2,lambda2,lambda2,lambda2,lambda2)
+  }
+  
   return(list(ls5=ls5,obj=t(ls5)%*%dmat%*%ls5/2,Dmat=dmat))
 }
 
-a_efratio_hat=function(S,p,d=1,sf=NULL){
+a_efratio_hat=function(S,p,d=1,sf=NULL,la=1){
+  
+  if(la==2){
+    k0=mean(myDiag(S,0))
+    k1=mean(myDiag(S,1))
+    k2=mean(myDiag(S,2))
+    k3=mean(myDiag(S,3))
+    k4=mean(myDiag(S,4)) #plot(0:4,c(k0,k1,k2,k3,k4))
+    a_hat=(2-k1/k2)/(k1/k2-1)
+    a_hat=(3*(k1/k2)-sqrt(9*(k1/k2)^2-16))/4
+    #a_hat=(k1-k3)/(2*k4*(k1/k3-1)^2)
+    b_hat=a_hat^2#1/(k1/k3-1)
+    #a_hat=2*b_hat
+    #sf2_hat=k4/b_hat^2
+    #se2_hat=k0-(2*a_hat^2+2*b_hat^2+1)*sf2_hat^2
+    rr=(k0/k1)*(2*a_hat+2*a_hat*b_hat)-(2*a_hat^2+2*b_hat^2+1) #se2_hat/sf2_hat
+    #rr=(k0/k1)*(2*a_hat+2*a_hat*b_hat)-(4*a_hat^2+4*b_hat^2+1)
+    return(c(a_hat,b_hat,sqrt(rr)))
+  }
+  
   if(d==1){
     if(is.null(sf)){
       k0=mean(diag(S[c(-1,-p),c(-1,-p)]))
@@ -192,17 +249,34 @@ myDiag <- function(x,k) {
 # S: sample covariance matrix
 # mu: lambda star
 # bandwidth: filtering S starting away from "bandwidth"th diagonal
-sigmabar=function(S,mu,bandwidth=2){
+sigmabar=function(S,mu,bandwidth=2,dd=5,py=NULL){
   p=dim(S)[1]; S1=S
   
-  for(i in bandwidth:(p-4)){
-    for(j in i:(p-2)){
-      if(abs(i-j)>=3){
-        vs=c(S[i,j],S[i-1,j],S[i,j+1],S[i+1,j],S[i,j-1])
-        S1[i,j]=S1[j,i]=crossprod(vs,mu)
+  
+  if(dd==5){
+    for(i in bandwidth:(p-4)){
+      for(j in i:(p-2)){
+        if(abs(i-j)>=3){
+          vs=c(S[i,j],S[i-1,j],S[i,j+1],S[i+1,j],S[i,j-1])
+          S1[i,j]=S1[j,i]=crossprod(vs,mu)
+        }
+      }
+    }
+  }else if(dd==9){
+    for(i in (bandwidth+1):(p-bandwidth-2)){
+      for(j in i:(p-bandwidth)){
+        if(abs(i-j)>=3){
+          vs=c(S[i,j],S[i-1,j],S[i,j+1],S[i+1,j],S[i,j-1],S[i-py,j],S[i,j+py],S[i+py,j],S[i,j-py])
+          if(i%%py==0){vs[4]=vs[2]}
+          if(i%%py==1){vs[2]=vs[4]}
+          if(j%%py==0){vs[3]=vs[5]}
+          if(j%%py==1){vs[5]=vs[3]}
+          S1[i,j]=S1[j,i]=crossprod(vs,mu)
+        }
       }
     }
   }
+  
   
   return(S1)
 }
