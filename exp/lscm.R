@@ -180,13 +180,13 @@ for(i in 1:n1){
   
 }
 tikz("./fig/lambdastar1d.tex", width = 3.25, height = 3.25)
-plot(ai,1-4*ai*li,type="l",xlim=c(0,1),ylim=c(0,1),xlab="$a$",ylab="$\\lambda^*$",col="blue",lwd=1)
-lines(ai,li,col="orange",lwd=1,lty=2)
-lines(ai,1-4*ai*li2,col="blue",lwd=2)
-lines(ai,li2,col="orange",lwd=2,lty=2)
-lines(ai,1-4*ai*li3,col="blue",lwd=3)
-lines(ai,li3,col="orange",lwd=3,lty=2)
-legend("topright",c("$\\lambda_1^*$","$\\lambda_2^*$"),col=c("blue","orange"),lty=c(1,2),cex=0.8)
+plot(ai,1-4*ai*li,type="l",xlim=c(0,1),ylim=c(0,1),xlab="$a$",ylab="$\\lambda^*$",col="red",lwd=2)
+lines(ai,li,col="red",lwd=2,lty=2)
+lines(ai,1-4*ai*li2,col="green",lwd=2)
+lines(ai,li2,col="green",lwd=2,lty=2)
+lines(ai,1-4*ai*li3,col="blue",lwd=2)
+lines(ai,li3,col="blue",lwd=2,lty=2)
+legend("topright",c("$\\lambda_1^*$","$\\lambda_2^*$"),col=c("black","black"),lty=c(1,2),cex=1)
 dev.off()
 ####### make plot for 2-dim model #######
 n1=31

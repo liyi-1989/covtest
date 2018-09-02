@@ -70,9 +70,19 @@ TCM=function(para){
   if(d==1){
     A0=mdiag.r(p,c(1,a)); Sigma0=sf^2*A0%*%t(A0)+se^2*diag(rep(1,p))
     A1=A0; 
-    A1[j0,i0]=r; A1[j0,j0]=sqrt(1-r^2); 
-    A1[j0+1:la,i0]=a*r; A1[j0+1:la,j0]=a*sqrt(1-r^2)
-    A1[j0-1:la,i0]=a*r; A1[j0-1:la,j0]=a*sqrt(1-r^2)
+    ni0=length(i0)
+    if(ni0==1){
+      A1[j0,i0]=r; A1[j0,j0]=sqrt(1-r^2); 
+      A1[j0+1:la,i0]=a*r; A1[j0+1:la,j0]=a*sqrt(1-r^2)
+      A1[j0-1:la,i0]=a*r; A1[j0-1:la,j0]=a*sqrt(1-r^2)
+    }else{
+      for(ii in 1:ni0){
+        A1[j0[ii],i0[ii]]=r; A1[j0[ii],j0[ii]]=sqrt(1-r^2); 
+        A1[j0[ii]+1:la,i0[ii]]=a*r; A1[j0[ii]+1:la,j0[ii]]=a*sqrt(1-r^2)
+        A1[j0[ii]-1:la,i0[ii]]=a*r; A1[j0[ii]-1:la,j0[ii]]=a*sqrt(1-r^2)
+      }
+    }
+
   }else if(d==2){
     A0=mdiag.r(p,c(1,a))
     
@@ -238,6 +248,10 @@ a_efratio_hat=function(S,p,d=1,sf=NULL,la=1){
   return(c(a_hat,ef_ratio))
 }
 
+myoffDiag <- function(x,k=3) {
+  x[abs(row(x)-col(x) )<= k]=0
+  x
+}
 
 
 myDiag <- function(x,k) {

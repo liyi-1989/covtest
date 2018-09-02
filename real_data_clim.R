@@ -319,4 +319,4 @@ load("results/real_H0_lmax.RData")
 quantile(lmax,0.999) #0.4935794 
 max(abs(LS[,1])) #0.889298
 sum(abs(LS[,1])>quantile(lmax,0.999)) #55387
-
+55387/length(LS[,1])
