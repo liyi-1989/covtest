@@ -5,6 +5,7 @@ library(ggplot2)
 #library(gridExtra)
 
 setwd("./results/simu_multi_960/")
+setwd("./results/simu_multi_300/")
 load("./results.df.RData")
 
 N=nrow(df)
