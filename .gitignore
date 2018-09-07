@@ -7,4 +7,5 @@ mis/
 ref/
 dat/
 results/
+!results/simu_multi_300
 .Rproj.user
