@@ -6,6 +6,6 @@ doc/
 mis/
 ref/
 dat/
-results/
-!results/simu_multi_300
+results/*
+!results/simu_multi_300/
 .Rproj.user
