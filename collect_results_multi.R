@@ -21,7 +21,7 @@ for(jobid in 1:N){
   sd1[jobid,]=c(apply(R1[,c("n_detect_hat","n_detect_bar")],2,sd),para1$n,para1$p,para1$a,para1$r,para1$se,para1$sf)
 }
 
-save(df,mean0,mean1,sd0,sd1,file = "multi.RData")
+save(df,mean0,mean1,sd0,sd1,file = "multi_300.RData")
 
 #-------------------- n ---------------------------
 means=subset(mean1,a==0.9 & r==0.9 & se==2 & p==300 & n>500)
@@ -33,7 +33,7 @@ df=rbind(df1,df2)
 ggplot(df,aes(x=as.factor(var),y=value,fill=estimator))+
   geom_bar(stat="identity", position=position_dodge())+
   xlab("n")+ylab("recovery")+#ggtitle("Averaged recoveries")+
-  theme(legend.position = c(0.15, 0.85))+
+  theme(legend.position = c(0.85, 0.75))+
   ggsave("../../fig/multi_n.pdf")
 #-------------------- p ---------------------------
 means=subset(mean1,a==0.9 & r==0.9 & se==2 & p>0 & n==1000)
@@ -52,13 +52,19 @@ ggplot(df,aes(x=as.factor(var),y=value,fill=estimator))+
 #-------------------- table ---------------------------
 library(data.table)
 
-meant=subset(mean1, se==2 & p %in% c(100,200,300) & n %in% c(1000,2000,5000) & a %in% c(0.7,0.8,0.9) & r %in% c(0.7,0.8,0.9),
+meant=subset(mean1, se==1 & p %in% c(100,200,300) & n %in% c(1000,2000,3000) & a %in% c(0.7,0.8,0.9) & r %in% c(0.7,0.8,0.9),
+             select = c("n","p","a","r","se","n_detect_hat","n_detect_bar"))
+meant1=data.table::dcast(setDT(meant), n+a ~ p+r,value.var = c("n_detect_hat","n_detect_bar"))
+meant1=meant1[,c(1,2,rep(c(1,10),9)+rep(0:8,each=2)+2)]
+write.csv(meant1,file="multi_1.csv")
+
+meant=subset(mean1, se==2 & p %in% c(100,200,300) & n %in% c(1000,2000,3000) & a %in% c(0.7,0.8,0.9) & r %in% c(0.7,0.8,0.9),
              select = c("n","p","a","r","se","n_detect_hat","n_detect_bar"))
 meant1=data.table::dcast(setDT(meant), n+a ~ p+r,value.var = c("n_detect_hat","n_detect_bar"))
 meant1=meant1[,c(1,2,rep(c(1,10),9)+rep(0:8,each=2)+2)]
 write.csv(meant1,file="multi_2.csv")
 
-meant=subset(mean1, se==3 & p %in% c(100,200,300) & n %in% c(1000,2000,5000) & a %in% c(0.7,0.8,0.9) & r %in% c(0.7,0.8,0.9),
+meant=subset(mean1, se==3 & p %in% c(100,200,300) & n %in% c(1000,2000,3000) & a %in% c(0.7,0.8,0.9) & r %in% c(0.7,0.8,0.9),
              select = c("n","p","a","r","se","n_detect_hat","n_detect_bar"))
 meant1=data.table::dcast(setDT(meant), n+a ~ p+r,value.var = c("n_detect_hat","n_detect_bar"))
 meant1=meant1[,c(1,2,rep(c(1,10),9)+rep(0:8,each=2)+2)]
