@@ -23,6 +23,8 @@ for(jobid in 1:N){
 
 save(df,mean0,mean1,sd0,sd1,file = "multi_300.RData")
 
+load("multi_300.RData")
+
 #-------------------- n ---------------------------
 means=subset(mean1,a==0.9 & r==0.9 & se==2 & p==300 & n>500)
 df1=data.frame(value=means$n_detect_hat,var=means$n)
@@ -32,8 +34,10 @@ df2$estimator="2"
 df=rbind(df1,df2)
 ggplot(df,aes(x=as.factor(var),y=value,fill=estimator))+
   geom_bar(stat="identity", position=position_dodge())+
-  xlab("n")+ylab("recovery")+#ggtitle("Averaged recoveries")+
+  xlab("n")+ylab("correctly identified pairs")+#ggtitle("Averaged recoveries")+
   theme(legend.position = c(0.85, 0.75))+
+  ggtitle(expression("p=300,a="~rho~"=0.9")) +
+  theme(plot.title = element_text(hjust = 0.5))+
   ggsave("../../fig/multi_n.pdf")
 #-------------------- p ---------------------------
 means=subset(mean1,a==0.9 & r==0.9 & se==2 & p>0 & n==1000)
@@ -44,8 +48,10 @@ df2$estimator="2"
 df=rbind(df1,df2)
 ggplot(df,aes(x=as.factor(var),y=value,fill=estimator))+
   geom_bar(stat="identity", position=position_dodge())+
-  xlab("p")+ylab("recovery")+#ggtitle("Averaged recoveries")+
+  xlab("p")+ylab("correctly identified pairs")+#ggtitle("Averaged recoveries")+
   theme(legend.position = c(0.85, 0.75))+
+  ggtitle(expression("n=1000,a="~rho~"=0.9")) +
+  theme(plot.title = element_text(hjust = 0.5))+
   ggsave("../../fig/multi_p.pdf")
  
 
