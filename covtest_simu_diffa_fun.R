@@ -12,12 +12,12 @@ library(Matrix)
 # ns=c(500,1000,2000)#c(2,4,6,8,10,20,30,40,50)*100
 # ps=c(50,100,150)#c(50,100,150,200,500,1000)
 # 
-aas=(5:9)/10
+aas=c(0.5,0.7)
 rrs=(5:9)/10
 ses=2
 ns=c(2,4,6,8,10,20,30,40,50)*100
 ps=c(50,100,200,500)
-sigs=seq(0,0.3,length=16)
+sigs=c(0.1,0.2,0.3)
 
 df=NULL
 for(i1 in 1:length(aas)){
@@ -41,12 +41,12 @@ save(df,file = "./results.df.RData")
 simu=function(jobid=1){
   #------------------------------------
   paras=list(p=100,n=1000,a=0.9,r=0.8,sf=1,se=2,i0=NULL,j0=NULL,M=NULL,d=1,method="equalvar",N=100,sig=0.1) # one-dimensional model
-  aas=(5:9)/10
+  aas=c(0.5,0.7)
   rrs=(5:9)/10
   ses=2
   ns=c(2,4,6,8,10,20,30,40,50)*100
   ps=c(50,100,200,500)
-  sigs=seq(0,0.3,length=16)
+  sigs=c(0.1,0.2,0.3)
   
   df=NULL
   for(i1 in 1:length(aas)){

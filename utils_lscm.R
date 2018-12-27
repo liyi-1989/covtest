@@ -60,8 +60,10 @@ TCMa=function(para){
   if(d==1){
     A0=mdiag.r(p,c(1,a))
     #------------------------------------------
-    for(ii in 2:p){
-      A0[ii-1,ii]=A0[ii,ii-1]=a+rnorm(1,0,sig)
+    if(la==1){
+      for(ii in 2:(p-1)){
+        A0[ii-1,ii]=A0[ii,ii+1]=a+rnorm(1,0,sig)
+      }
     }
     #-----------------------------------------
     Sigma0=sf^2*A0%*%t(A0)+se^2*diag(rep(1,p))
@@ -69,8 +71,8 @@ TCMa=function(para){
     ni0=length(i0)
     if(ni0==1){
       A1[j0,i0]=r; A1[j0,j0]=sqrt(1-r^2); 
-      A1[j0+1:la,i0]=a*r; A1[j0+1:la,j0]=a*sqrt(1-r^2)
-      A1[j0-1:la,i0]=a*r; A1[j0-1:la,j0]=a*sqrt(1-r^2)
+      A1[j0+1:la,i0]=A0[j0+1,j0+2]*r; A1[j0+1:la,j0]=A0[j0+1,j0+2]*sqrt(1-r^2)
+      A1[j0-1:la,i0]=A0[j0-1,j0-2]*r; A1[j0-1:la,j0]=A0[j0-1,j0-2]*sqrt(1-r^2)
     }else{
       for(ii in 1:ni0){
         A1[j0[ii],i0[ii]]=r; A1[j0[ii],j0[ii]]=sqrt(1-r^2); 
