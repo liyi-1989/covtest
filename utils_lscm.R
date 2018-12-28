@@ -106,6 +106,42 @@ TCMa=function(para){
   return(list(S0=Sigma0,S1=Sigma1,A0=A0,A1=A1))
 }
 
+TCMa2=function(para){
+  a=para$a; r=para$r; sf=para$sf; se=para$se; p=para$p; n=para$n; i0=para$i0; j0=para$j0; d=para$d; M=para$M; py=para$py; sig=para$sig
+  la=length(a)
+  if(para$method=="unequalvar"){
+    A0=mdiag.r(p,c(1,a,a^2)); Sigma0=sf^2*A0%*%t(A0)+se^2*diag(rep(1,p))
+    A1=A0;
+    A1[i0,j0]=A1[j0,i0]=r; Sigma1=sf^2*A1%*%t(A1)+se^2*diag(rep(1,p))
+    return(list(S0=Sigma0,S1=Sigma1))
+  }
+  
+  if(d==1){
+    A0=mdiag.r(p,c(1,a))
+    Sigma0=sf^2*A0%*%t(A0)+se^2*diag(rep(1,p))
+    A1=A0; 
+    ni0=length(i0)
+    if(ni0==1){
+      A1[j0,i0]=r; A1[j0,j0]=sqrt(1-r^2); 
+      A1[j0+1:la,i0]=a*r; A1[j0+1:la,j0]=a*sqrt(1-r^2)
+      A1[j0-1:la,i0]=a*r; A1[j0-1:la,j0]=a*sqrt(1-r^2)
+      A1[j0+2,i0]=a^2*r; A1[j0+2,j0]=a^2*sqrt(1-r^2)
+      A1[j0-2,i0]=a^2*r; A1[j0-2,j0]=a^2*sqrt(1-r^2)
+    }else{
+      for(ii in 1:ni0){
+        A1[j0[ii],i0[ii]]=r; A1[j0[ii],j0[ii]]=sqrt(1-r^2); 
+        A1[j0[ii]+1:la,i0[ii]]=a*r; A1[j0[ii]+1:la,j0[ii]]=a*sqrt(1-r^2)
+        A1[j0[ii]-1:la,i0[ii]]=a*r; A1[j0[ii]-1:la,j0[ii]]=a*sqrt(1-r^2)
+      }
+    }
+    
+  }else if(d==2){
+
+  }
+  Sigma1=sf^2*A1%*%t(A1)+se^2*diag(rep(1,p))
+  #C1=t(base::chol(Sigma1))
+  return(list(S0=Sigma0,S1=Sigma1,A0=A0,A1=A1))
+}
 
 
 

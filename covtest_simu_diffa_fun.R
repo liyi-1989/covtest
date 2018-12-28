@@ -77,7 +77,7 @@ simu=function(jobid=1){
   para1$p=df[jobid,"p"]
   para1$sig=df[jobid,"sig"]
   para1$i0=round(para1$p*0.23); para1$j0=round(para1$p*0.77)
-  covmodel=TCMa(para1); S0=covmodel$S0; S1=covmodel$S1
+  covmodel=TCMa2(para1); S0=covmodel$S0; S1=covmodel$S1
   # make a copy
   n=para1$n; p=para1$p; i0=para1$i0; j0=para1$j0; N=para1$N 
   alpha=0.05
